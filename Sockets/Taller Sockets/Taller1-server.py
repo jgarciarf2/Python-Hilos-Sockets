@@ -232,36 +232,113 @@ class ChatServer:
             1) Crea y configura el socket del servidor.
             2) Acepta dos clientes, pide nombre y crea un hilo por cliente.
             3) Mantiene el proceso vivo mientras existan clientes activos.
-        """  # Doc del metodo.
+        """
 
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:  # Socket TCP.
-            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Reusar puerto.
-            server.bind((self.host, self.port))  # Asigna IP y puerto.
-            server.listen(2)  # Cola de hasta 2 conexiones.
-            print(f"Servidor escuchando en {self.host}:{self.port}")  # Log inicial.
+        # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+        # QUE HACE: Crea un socket TCP para IPv4.
+        # - socket.AF_INET = IPv4 (Address Family Internet).
+        # - socket.SOCK_STREAM = TCP (confiable, orientado a conexión).
+        # - with = context manager que asegura close() al salir.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+            # server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # QUE HACE: Permite reusar el puerto inmediatamente después de cerrar.
+            # - Evita el error "Address already in use" si reiniciamos rápido.
+            # - Sin esto hay que esperar ~60 segundos (TIME_WAIT del SO).
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            
+            # server.bind((self.host, self.port))
+            # QUE HACE: Vincula el socket a una dirección IP y puerto específico.
+            # - ARGUMENTOS: (self.host="127.0.0.1", self.port=50007).
+            # - El SO sabe que este socket escucha en 127.0.0.1:50007.
+            server.bind((self.host, self.port))
+            
+            # server.listen(2)
+            # QUE HACE: Prepara el socket para aceptar conexiones.
+            # - ARGUMENTO: 2 = tamaño máximo de la cola (hasta 2 conexiones pendientes).
+            server.listen(2)
+            
+            # print(f"Servidor escuchando en {self.host}:{self.port}")
+            # QUE HACE: Imprime en consola que el servidor está activo.
+            print(f"Servidor escuchando en {self.host}:{self.port}")
 
-            while len(self.clients) < 2:  # Acepta exactamente 2 clientes.
-                conn, addr = server.accept()  # Espera conexion.
-                name = self._recv_name(conn)  # Solicita nombre.
-                if not name:  # Si no hay nombre, se descarta.
-                    conn.close()  # Cierra socket.
-                    continue  # Vuelve a esperar.
-                client = ClientState(name=name, conn=conn, addr=addr)  # Crea estado.
-                self.clients.append(client)  # Guarda cliente.
-                print(f"Conectado: {name} desde {addr}")  # Log.
+            # while len(self.clients) < 2:
+            # QUE HACE: Loop que acepta exactamente 2 clientes.
+            while len(self.clients) < 2:
+                # conn, addr = server.accept()
+                # QUE HACE: server.accept() bloquea esperando a un cliente.
+                # - RETORNA: (socket_del_cliente, (ip_remota, puerto_remoto)).
+                # - conn = socket único para comunicarse con este cliente.
+                # - addr = tuple (ip, puerto) del cliente.
+                conn, addr = server.accept()
+                
+                # name = self._recv_name(conn)
+                # QUE HACE: Llama a _recv_name(conn) para solicitar el nombre del cliente.
+                # - ARGUMENTO: conn = socket ya conectado del cliente.
+                # - RETORNA: nombre (str) o "" si falla.
+                # - VER: método _recv_name() más abajo para detalles.
+                name = self._recv_name(conn)
+                
+                # if not name:
+                # QUE HACE: Verifica si el nombre es vacío (conexión falló).
+                if not name:
+                    # conn.close()
+                    # QUE HACE: Cierra el socket de este cliente rechazado.
+                    conn.close()
+                    
+                    # continue
+                    # QUE HACE: Salta al siguiente accept(), espera otro cliente.
+                    continue
+                
+                # client = ClientState(name=name, conn=conn, addr=addr)
+                # QUE HACE: Crea un objeto que encapsula los datos del cliente.
+                # - @dataclass genera __init__ automáticamente.
+                # - ARGUMENTOS: name (str), conn (socket), addr (tuple).
+                # - alive (bool) se pone True por defecto.
+                client = ClientState(name=name, conn=conn, addr=addr)
+                
+                # self.clients.append(client)
+                # QUE HACE: Agrega el cliente a la lista de clientes.
+                # - Aumenta len(self.clients) en 1.
+                # - Cuando len(self.clients) == 2, el while termina.
+                self.clients.append(client)
+                
+                # print(f"Conectado: {name} desde {addr}")
+                # QUE HACE: Imprime un log de que el cliente se conectó.
+                print(f"Conectado: {name} desde {addr}")
 
-                thread = threading.Thread(  # Hilo por cliente.
-                    target=self._handle_client,  # Manejo de mensajes.
-                    args=(client,),  # Pasa el cliente.
-                    daemon=True,  # Hilo se cierra con el proceso.
+                # thread = threading.Thread(target=self._handle_client, args=(client,), daemon=True)
+                # QUE HACE: Crea un hilo que ejecutará _handle_client(client).
+                # - target = función a ejecutar: self._handle_client.
+                # - args = argumentos para la función: (client,).
+                # - daemon = True: el hilo muere cuando el proceso principal muere.
+                thread = threading.Thread(
+                    target=self._handle_client,
+                    args=(client,),
+                    daemon=True,
                 )
-                thread.start()  # Inicia el hilo.
+                
+                # thread.start()
+                # QUE HACE: Inicia el hilo (comienza a ejecutar _handle_client(client)).
+                # - No es bloqueante, retorna inmediatamente.
+                # - El hilo ejecuta en paralelo (concurrencia).
+                thread.start()
 
-            # Mantiene el servidor vivo hasta que todos salgan.
-            while any(c.alive for c in self.clients):  # Revisa clientes activos.
-                time.sleep(0.2)  # Evita loop agresivo.
+            # while any(c.alive for c in self.clients):
+            # QUE HACE: Loop que mantiene el servidor vivo mientras haya clientes.
+            # - any() = True si AL MENOS UN cliente está vivo (alive=True).
+            # - El loop termina cuando ambos clientes sean alive=False.
+            while any(c.alive for c in self.clients):
+                # time.sleep(0.2)
+                # QUE HACE: Pausa 0.2 segundos para evitar saturar CPU con polling.
+                # - Cada 0.2 seg verifica si algún cliente sigue vivo.
+                time.sleep(0.2)
 
-        print("Servidor finalizado.")  # Log final.
+        # Aquí se ejecuta server.close() automáticamente (context manager con)
+        # QUE HACE: Cierra el socket servidor, libera el puerto.
+        
+        # print("Servidor finalizado.")
+        # QUE HACE: Imprime que el servidor se apagó.
+        print("Servidor finalizado.")
 
     def _recv_name(self, conn: socket.socket) -> str:
         """Solicita el nombre al cliente para identificarlo en el chat.
@@ -271,14 +348,42 @@ class ChatServer:
 
         Returns:
             El nombre recibido como str, o cadena vacia si falla.
-        """  # Doc breve.
+        """
 
-        try:  # Control de errores de red.
-            conn.sendall("NOMBRE: ".encode(ENCODING))  # Pide nombre.
-            raw = conn.recv(BUFFER_SIZE)  # Lee respuesta.
-            return raw.decode(ENCODING).strip()  # Devuelve limpio.
-        except OSError:  # Error de socket.
-            return ""  # Sin nombre.
+        # try:
+        # QUE HACE: Inicia un bloque de manejo de errores.
+        try:
+            # conn.sendall("NOMBRE: ".encode(ENCODING))
+            # QUE HACE: Envía la solicitud de nombre al cliente.
+            # - conn = socket del cliente.
+            # - sendall() envía todos los bytes (reintentos si es necesario).
+            # - "NOMBRE: " = string de solicitud.
+            # - encode(ENCODING) = convierte str a bytes usando UTF-8.
+            # - RESULTADO: cliente recibe b'NOMBRE: ' y entra en input().
+            conn.sendall("NOMBRE: ".encode(ENCODING))
+            
+            # raw = conn.recv(BUFFER_SIZE)
+            # QUE HACE: Recibe la respuesta del cliente (bloquea hasta recibir datos).
+            # - conn = socket del cliente.
+            # - BUFFER_SIZE = 2048 (máximo de bytes a recibir).
+            # - raw = bytes recibidos (ej: b'Alice\n').
+            # - RETORNA: 0 bytes si el cliente cerró la conexión.
+            raw = conn.recv(BUFFER_SIZE)
+            
+            # return raw.decode(ENCODING).strip()
+            # QUE HACE: Decodifica, limpia y retorna el nombre.
+            # - decode(ENCODING) = convierte bytes a str (b'Alice\n' -> "Alice\n").
+            # - strip() = elimina espacios y saltos de línea ("Alice\n" -> "Alice").
+            # - RETORNA: nombre limpio como string.
+            return raw.decode(ENCODING).strip()
+        
+        # except OSError:
+        # QUE HACE: Captura errores de socket (conexión cerrada, timeout, etc).
+        except OSError:
+            # return ""
+            # QUE HACE: Retorna string vacío para indicar fallo.
+            # - start() interpreta esto como "rechazar este cliente".
+            return ""
 
     def _handle_client(self, client: ClientState) -> None:
         """Escucha mensajes de un cliente y los reenvia al otro.
@@ -290,57 +395,190 @@ class ChatServer:
             - Espera la barrera de inicio.
             - Recibe mensajes y los reenvia al otro cliente.
             - Registra historial y maneja desconexion.
-        """  # Doc breve.
+        """
 
-        try:  # Barrera puede lanzar error.
-            # Barrera: espera a que ambos clientes esten listos.
-            self.ready_barrier.wait()  # Sincroniza el inicio.
-            self._send_to(client, "Ambos usuarios conectados. Puedes chatear.\n")  # Aviso.
-        except threading.BrokenBarrierError:  # Si algun cliente falla.
-            client.alive = False  # Marca como inactivo.
-            return  # Sale del hilo.
-
-        while client.alive:  # Loop de mensajes.
-            try:  # Control de errores de socket.
-                data = client.conn.recv(BUFFER_SIZE)  # Espera mensaje.
-                if not data:  # Socket cerrado.
-                    break  # Sale del loop.
-                message = data.decode(ENCODING).strip()  # Convierte a texto.
-                if message.lower() == "/exit":  # Comando de salida.
-                    break  # Termina el chat.
-
-                # Controla la sobrecarga limitando mensajes en vuelo.
-                if not self.in_flight_limit.acquire(blocking=False):  # Intenta tomar cupo.
-                    print(f"[DROP] {client.name}: sobrecarga controlada")  # Log drop.
-                    continue  # Ignora el mensaje.
-
-                try:  # Protege liberacion del semaforo.
-                    self._register_message(f"{client.name}: {message}")  # Guarda historial.
-                    self._broadcast(client, f"{client.name}: {message}\n")  # Reenvia.
-                finally:
-                    self.in_flight_limit.release()  # Libera cupo.
-
-            except OSError:  # Error de socket.
-                break  # Sale del loop.
-
-        client.alive = False  # Marca desconexion.
-        self._register_message(f"{client.name} se desconecto")  # Historial.
-        print(f"Desconectado: {client.name}")  # Log.
+        # try:
+        # QUE HACE: Inicia bloque para sincronización con barrera.
         try:
-            client.conn.close()  # Cierra socket.
+            # self.ready_barrier.wait()
+            # QUE HACE: Espera en la barrera hasta que 2 hilos lleguen.
+            # - ready_barrier = threading.Barrier(2).
+            # - wait() BLOQUEA hasta que 2 hilos llamem a wait().
+            # - Cuando ambos llaman, la barrera se "rompe" y avanzan juntos.
+            # - PROPÓSITO: evitar que un cliente envíe antes del otro.
+            self.ready_barrier.wait()
+            
+            # self._send_to(client, "Ambos usuarios conectados. Puedes chatear.\n")
+            # QUE HACE: Envía mensaje de confirmación al cliente.
+            # - client = ClientState del cliente actual.
+            # - Mensaje = "Ambos usuarios conectados. Puedes chatear.\n".
+            # - VER: método _send_to() más abajo.
+            self._send_to(client, "Ambos usuarios conectados. Puedes chatear.\n")
+        
+        # except threading.BrokenBarrierError:
+        # QUE HACE: Captura si la barrera falla (alguien se desconecta en wait()).
+        except threading.BrokenBarrierError:
+            # client.alive = False
+            # QUE HACE: Marca al cliente como inactivo.
+            # - El while loop no se ejecutará.
+            client.alive = False
+            
+            # return
+            # QUE HACE: Sale del método (termina el hilo).
+            return
+
+        # while client.alive:
+        # QUE HACE: Loop principal que recibe mensajes mientras el cliente esté activo.
+        # - SALE CUANDO: client.alive se ponga False (desconexión).
+        # - CONDICIÓN: se evalúa al inicio de cada iteración.
+        while client.alive:
+            # try:
+            # QUE HACE: Inicia bloque para manejar errores de socket.
+            try:
+                # data = client.conn.recv(BUFFER_SIZE)
+                # QUE HACE: Espera a recibir datos del cliente (BLOQUEA indefinidamente).
+                # - client.conn = socket del cliente.
+                # - recv(BUFFER_SIZE) = recibe hasta 2048 bytes.
+                # - RETORNA: bytes recibidos o b'' (0 bytes si cliente cerró).
+                # - data = bytes del mensaje (ej: b'Hola').
+                data = client.conn.recv(BUFFER_SIZE)
+                
+                # if not data:
+                # QUE HACE: Verifica si recv() retornó 0 bytes (cliente cerró conexión).
+                # - not b'' = True (bytes vacíos son falsos en Python).
+                if not data:
+                    # break
+                    # QUE HACE: Sale del while loop (va a limpieza).
+                    break
+                
+                # message = data.decode(ENCODING).strip()
+                # QUE HACE: Decodifica bytes a str y limpia espacios.
+                # - decode(ENCODING) = b'Hola' -> "Hola" (UTF-8).
+                # - strip() = elimina espacios/saltos ("Hola\\n" -> "Hola").
+                # - message = string limpio del mensaje.
+                message = data.decode(ENCODING).strip()
+                
+                # if message.lower() == "/exit":
+                # QUE HACE: Verifica si el cliente envió el comando de salida.
+                # - message.lower() = convierte a minúsculas ("/EXIT" -> "/exit").
+                # - Si es "/exit", cliente quiere desconectarse.
+                if message.lower() == "/exit":
+                    # break
+                    # QUE HACE: Sale del while loop (limpieza y cierre).
+                    break
+
+                # if not self.in_flight_limit.acquire(blocking=False):
+                # QUE HACE: Intenta obtener un permiso del semáforo sin bloquear.
+                # - in_flight_limit = BoundedSemaphore(5) con 5 permisos.
+                # - acquire(blocking=False) retorna True si hay permiso, False si no.
+                # - not False = True (si NO hay permiso, entra en el if).
+                # - PROPÓSITO: controlar sobrecarga.
+                if not self.in_flight_limit.acquire(blocking=False):
+                    # print(f"[DROP] {client.name}: sobrecarga controlada")
+                    # QUE HACE: Imprime que el mensaje fue descartado.
+                    # - [DROP] = etiqueta para identificar descartes.
+                    # - {client.name} = nombre del cliente.
+                    # - ÚTIL: monitoreo/debugging.
+                    print(f"[DROP] {client.name}: sobrecarga controlada")
+                    
+                    # continue
+                    # QUE HACE: Salta al siguiente while (intenta recibir otro mensaje).
+                    # - No ejecuta el resto (no registra ni reenvia).
+                    continue
+
+                # try:
+                # QUE HACE: Inicia bloque garantizado para release().
+                try:
+                    # self._register_message(f"{client.name}: {message}")
+                    # QUE HACE: Registra el mensaje en el historial.
+                    # - ARGUMENTO: string formateado "Alice: Hola".
+                    # - VER: método _register_message() más abajo.
+                    self._register_message(f"{client.name}: {message}")
+                    
+                    # self._broadcast(client, f"{client.name}: {message}\\n")
+                    # QUE HACE: Reenvia el mensaje al otro cliente.
+                    # - ARGUMENTOS: client (emisor), mensaje con salto de línea.
+                    # - VER: método _broadcast() más abajo.
+                    self._broadcast(client, f"{client.name}: {message}\n")
+                
+                # finally:
+                # QUE HACE: Bloque que SIEMPRE se ejecuta, incluso si hay error.
+                finally:
+                    # self.in_flight_limit.release()
+                    # QUE HACE: Libera el permiso del semáforo.
+                    # - release() incrementa el contador del semáforo.
+                    # - IMPORTANTE: si no hace release(), quedan permisos atrapados (deadlock).
+                    # - finally GARANTIZA: siempre se libera, incluso si hay excepción.
+                    self.in_flight_limit.release()
+
+            # except OSError:
+            # QUE HACE: Captura errores de socket.
+            # - EJEMPLOS: cliente cerró conexión, timeout, error de red.
+            except OSError:
+                # break
+                # QUE HACE: Sale del while loop (va a limpieza).
+                break
+
+        # Aquí termina el while. Limpieza de desconexión.
+
+        # client.alive = False
+        # QUE HACE: Marca al cliente como inactivo.
+        # - EFECTO: el main loop while any(c.alive...) verá esto.
+        client.alive = False
+        
+        # self._register_message(f"{client.name} se desconecto")
+        # QUE HACE: Registra en historial que el cliente se fue.
+        # - EJEMPLO EN HISTORIAL: "Alice se desconecto".
+        self._register_message(f"{client.name} se desconecto")
+        
+        # print(f"Desconectado: {client.name}")
+        # QUE HACE: Imprime en consola que el cliente se desconectó.
+        print(f"Desconectado: {client.name}")
+        
+        # try:
+        # QUE HACE: Intenta cerrar el socket (puede fallar si ya está cerrado).
+        try:
+            # client.conn.close()
+            # QUE HACE: Cierra el socket del cliente.
+            # - EFECTO: libera recursos, conexión cerrada.
+            client.conn.close()
+        
+        # except OSError:
+        # QUE HACE: Si hay error al cerrar (socket ya cerrado, etc), ignora.
         except OSError:
-            pass  # Ignora error al cerrar.
+            # pass
+            # QUE HACE: No hacer nada, simplemente ignorar el error.
+            pass
 
     def _register_message(self, message: str) -> None:
         """Agrega un mensaje al historial y lo imprime en servidor.
 
         Args:
             message: Texto ya formateado para guardar en historial.
-        """  # Doc.
+        """
 
-        with self.history_lock:  # Protege historial compartido.
-            self.history.append(message)  # Agrega al historial.
-            print(f"[HIST] {message}")  # Muestra en consola.
+        # with self.history_lock:
+        # QUE HACE: Adquiere el lock (mutex) que protege el historial.
+        # - self.history_lock = threading.Lock().
+        # - with = context manager: asegura que se libera el lock al salir.
+        # - DENTRO del bloque with: solo 1 hilo ejecuta (exclusión mutua).
+        # - PROBLEMA EVITADO: dos hilos escribiendo history simultáneamente (condición de carrera).
+        with self.history_lock:
+            # self.history.append(message)
+            # QUE HACE: Agrega el mensaje al final de la lista historial.
+            # - self.history = list[str] que contiene todos los mensajes.
+            # - message = string ya formateado (ej: "Alice: Hola mundo").
+            # - PROTEGIDO: solo 1 hilo aquí por el lock.
+            # - EFECTO: history crece (sin límite en este servidor).
+            self.history.append(message)
+            
+            # print(f"[HIST] {message}")
+            # QUE HACE: Imprime el mensaje en consola con prefijo [HIST].
+            # - [HIST] = etiqueta para identificar registros de historial.
+            # - {message} = contenido del mensaje.
+            # - ÚTIL: monitoreo en tiempo real del servidor.
+            # - EJEMPLO: "[HIST] Alice: Hola mundo"
+            print(f"[HIST] {message}")
 
     def _broadcast(self, sender: ClientState, message: str) -> None:
         """Reenvia el mensaje al cliente opuesto con un semaforo de envio.
@@ -348,13 +586,41 @@ class ChatServer:
         Args:
             sender: Cliente que origina el mensaje.
             message: Texto a reenviar al resto de clientes.
-        """  # Doc.
+        """
 
-        with self.send_semaphore:  # Evita envios simultaneos.
-            for client in self.clients:  # Itera clientes.
-                if client is sender or not client.alive:  # Salta emisor o inactivos.
-                    continue  # No se envia.
-                self._send_to(client, message)  # Envia mensaje.
+        # with self.send_semaphore:
+        # QUE HACE: Adquiere el semáforo que serializa envíos.
+        # - self.send_semaphore = threading.Semaphore(1) con 1 permiso.
+        # - with = context manager: asegura que se libera el semáforo al salir.
+        # - DENTRO del bloque with: solo 1 hilo envía (serialización).
+        # - PROBLEMA EVITADO: dos hilos escribiendo al socket destino simultáneamente.
+        # - CONSECUENCIA EVITADA: mensajes entrelazados en el buffer del cliente.
+        with self.send_semaphore:
+            # for client in self.clients:
+            # QUE HACE: Itera sobre todos los clientes conectados.
+            # - self.clients = list[ClientState] de clientes.
+            # - RANGO: 0, 1, o 2 clientes.
+            # - client = cada ClientState en la iteración.
+            for client in self.clients:
+                # if client is sender or not client.alive:
+                # QUE HACE: Verifica dos condiciones (descarta si ANY es verdadera):
+                # - client is sender = ¿es el mismo cliente? (compara identidad, no igualdad).
+                #   * Si es el EMISOR, omite (no le envía a sí mismo).
+                # - not client.alive = ¿está inactivo? (alive=False).
+                #   * Si ya se desconectó, omite.
+                # - or = si CUALQUIERA es verdadera, omite.
+                if client is sender or not client.alive:
+                    # continue
+                    # QUE HACE: Salta a la siguiente iteración del for.
+                    # - No ejecuta _send_to() para este cliente.
+                    continue
+                
+                # self._send_to(client, message)
+                # QUE HACE: Envía el mensaje al cliente.
+                # - ARGUMENTOS: client = cliente destino, message = mensaje.
+                # - VER: método _send_to() más abajo.
+                # - EFECTO: cliente recibe el mensaje en su socket.
+                self._send_to(client, message)
 
     def _send_to(self, client: ClientState, message: str) -> None:
         """Envio protegido para un cliente.
@@ -362,12 +628,30 @@ class ChatServer:
         Args:
             client: Destinatario del mensaje.
             message: Texto en claro que sera codificado y enviado.
-        """  # Doc.
+        """
 
+        # try:
+        # QUE HACE: Inicia bloque para manejar errores de socket.
         try:
-            client.conn.sendall(message.encode(ENCODING))  # Envia bytes.
-        except OSError:  # Error al enviar.
-            client.alive = False  # Marca inactivo.
+            # client.conn.sendall(message.encode(ENCODING))
+            # QUE HACE: Envía el mensaje codificado al cliente.
+            # - client.conn = socket del cliente destino.
+            # - message.encode(ENCODING) = convierte str a bytes.
+            #   * "Hola mundo" -> b'Hola mundo' (UTF-8).
+            # - sendall() envía TODOS los bytes (reintentos si es necesario).
+            #   * A diferencia de send() que puede enviar parcialmente.
+            # - EFECTO: cliente recibe los bytes en su socket (recv() los obtiene).
+            client.conn.sendall(message.encode(ENCODING))
+        
+        # except OSError:
+        # QUE HACE: Captura errores de socket.
+        # - EJEMPLOS: conexión cerrada, cliente desconectado, timeout.
+        except OSError:
+            # client.alive = False
+            # QUE HACE: Marca al cliente como inactivo.
+            # - EFECTO: será descartado en próximas iteraciones.
+            # - No cerramos socket: ya está cerrado o no responde.
+            client.alive = False
 
 
 def main() -> None:
@@ -376,8 +660,28 @@ def main() -> None:
     Crea una instancia con valores por defecto y ejecuta el loop principal.
     """
 
-    ChatServer().start()  # Inicia servidor con valores por defecto.
+    # ChatServer().start()
+    # QUE HACE: Crea una instancia de ChatServer y ejecuta start().
+    # - ChatServer() = crea instancia con valores por defecto.
+    #   * host = "127.0.0.1" (localhost).
+    #   * port = 50007 (puerto arbitrario).
+    #   * history = [] (vacío).
+    #   * Todos los locks/semáforos/barreras se inicializan automáticamente.
+    # - .start() = ejecuta el método que comienza el loop de aceptación.
+    # - BLOQUEANTE: comienza a escuchar y acepta clientes.
+    # - RETORNA: cuando se cierren los sockets y terminen los hilos.
+    ChatServer().start()
 
 
+# if __name__ == "__main__":
+# QUE HACE: Verifica si el script se ejecuta directamente (no como importación).
+# - __name__ es un variable especial de Python.
+# - Si ejecutas: python Taller1-server.py -> __name__ = "__main__".
+# - Si importas: from archivo import algo -> __name__ = "archivo".
+# - BENEFICIO: permite usar el archivo como ejecutable O como librería.
 if __name__ == "__main__":
-    main()  # Entrada principal del script.
+    # main()
+    # QUE HACE: Llama a la función main() que inicia el servidor.
+    # - Solo se ejecuta si el script se ejecuta directamente.
+    # - No se ejecuta si el script se importa.
+    main()
