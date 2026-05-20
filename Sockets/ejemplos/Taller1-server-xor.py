@@ -293,7 +293,7 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-        print("Servidor finalizado.")
+    print("Servidor finalizado.")
 
     def _recv_name(self, conn: socket.socket) -> str:
         """Solicita nombre.
