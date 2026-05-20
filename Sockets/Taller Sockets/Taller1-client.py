@@ -20,7 +20,18 @@ BUFFER_SIZE = 2048  # Tamaño maximo del buffer.
 
 
 def run_client(host: str, port: int, spammer: bool = False) -> None:
-    """Conecta al servidor y mantiene un hilo receptor activo."""  # Doc breve.
+    """Conecta al servidor y mantiene un hilo receptor activo.
+
+    Args:
+        host: IP o hostname del servidor.
+        port: Puerto TCP del servidor.
+        spammer: Si es True, activa el modo de envio rapido.
+
+    Efectos:
+        - Abre el socket cliente.
+        - Inicia un hilo receptor para mensajes entrantes.
+        - Ejecuta el bucle de chat o el modo spammer.
+    """  # Doc breve.
 
     name = input("Tu nombre: ").strip() if not spammer else "SPAMMER"  # Nombre o modo spam.
     print(f"Conectando como {name}...")  # Log de conexion.
@@ -49,7 +60,13 @@ def run_client(host: str, port: int, spammer: bool = False) -> None:
 
 
 def _client_receiver(sock: socket.socket, print_lock: threading.Semaphore, stop_event: threading.Event) -> None:
-    """Recibe mensajes de forma asincrona."""  # Doc breve.
+    """Recibe mensajes de forma asincrona.
+
+    Args:
+        sock: Socket ya conectado al servidor.
+        print_lock: Semaforo para evitar mezclas de texto en consola.
+        stop_event: Evento que indica cuando detener el hilo.
+    """  # Doc breve.
 
     while not stop_event.is_set():  # Loop mientras no haya salida.
         try:  # Controla errores de red.
@@ -64,7 +81,12 @@ def _client_receiver(sock: socket.socket, print_lock: threading.Semaphore, stop_
 
 
 def _client_chat_loop(sock: socket.socket, stop_event: threading.Event) -> None:
-    """Lee desde teclado y envia mensajes al servidor."""  # Doc breve.
+    """Lee desde teclado y envia mensajes al servidor.
+
+    Args:
+        sock: Socket ya conectado.
+        stop_event: Evento para salir del loop.
+    """  # Doc breve.
 
     while not stop_event.is_set():  # Loop de escritura.
         try:
@@ -83,7 +105,13 @@ def _client_chat_loop(sock: socket.socket, stop_event: threading.Event) -> None:
 
 
 def _client_spam(sock: socket.socket, print_lock: threading.Semaphore, stop_event: threading.Event) -> None:
-    """Cliente especial que intenta sobrecargar con mensajes rapidos."""  # Doc breve.
+    """Cliente especial que intenta sobrecargar con mensajes rapidos.
+
+    Args:
+        sock: Socket conectado al servidor.
+        print_lock: Semaforo para proteger la salida en consola.
+        stop_event: Evento para detener el spam.
+    """  # Doc breve.
 
     total = 200  # Cantidad de mensajes.
     for i in range(1, total + 1):  # Loop de spam.
@@ -107,6 +135,12 @@ def _client_spam(sock: socket.socket, print_lock: threading.Semaphore, stop_even
 
 
 def parse_args() -> argparse.Namespace:
+    """Parsea argumentos de linea de comandos.
+
+    Returns:
+        Namespace con host, port y bandera spammer.
+    """
+
     parser = argparse.ArgumentParser(description="Cliente del chat bidireccional")  # Parser CLI.
     parser.add_argument("--host", default=HOST)  # IP servidor.
     parser.add_argument("--port", type=int, default=PORT)  # Puerto servidor.
@@ -115,6 +149,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Punto de entrada del cliente."""
+
     args = parse_args()  # Lee args.
     run_client(args.host, args.port, spammer=args.spammer)  # Ejecuta cliente.
 

@@ -20,7 +20,15 @@ BUFFER_SIZE = 2048  # Buffer.
 
 @dataclass
 class ClientState:
-    """Estado del cliente en una sala."""  # Doc.
+    """Estado del cliente en una sala.
+
+    Atributos:
+        name: Nombre del cliente.
+        room: Sala seleccionada.
+        conn: Socket TCP del cliente.
+        addr: Tupla (ip, puerto).
+        alive: Bandera de actividad.
+    """  # Doc.
 
     name: str  # Nombre.
     room: str  # Sala.
@@ -31,7 +39,15 @@ class ClientState:
 
 @dataclass
 class ChatServer:
-    """Servidor con salas separadas."""  # Doc.
+    """Servidor con salas separadas.
+
+    Atributos:
+        host: IP de escucha.
+        port: Puerto de escucha.
+        ready_barrier: Barrera (no usada para salas, se mantiene de ejemplo).
+        send_semaphore: Semaforo para serializar envios.
+        rooms: Diccionario sala -> lista de clientes.
+    """  # Doc.
 
     host: str = HOST  # IP.
     port: int = PORT  # Puerto.
@@ -40,7 +56,13 @@ class ChatServer:
     rooms: dict[str, list[ClientState]] = field(default_factory=dict)  # Mapa de salas.
 
     def start(self) -> None:
-        """Inicia el servidor y acepta clientes."""  # Doc.
+        """Inicia el servidor y acepta clientes.
+
+        Flujo:
+            - Acepta conexiones sin limite fijo.
+            - Pide nombre y sala.
+            - Lanza un hilo por cliente.
+        """  # Doc.
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:  # Socket.
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Reusar.
@@ -66,7 +88,14 @@ class ChatServer:
                 thread.start()  # Start.
 
     def _recv_identity(self, conn: socket.socket) -> tuple[str, str]:
-        """Pide nombre y sala al cliente."""  # Doc.
+        """Pide nombre y sala al cliente.
+
+        Args:
+            conn: Socket conectado.
+
+        Returns:
+            Tupla (nombre, sala) o cadenas vacias si falla.
+        """  # Doc.
 
         try:
             conn.sendall("NOMBRE: ".encode(ENCODING))  # Pide nombre.
@@ -78,7 +107,11 @@ class ChatServer:
             return "", ""  # Falla.
 
     def _handle_client(self, client: ClientState) -> None:
-        """Maneja mensajes dentro de la sala."""  # Doc.
+        """Maneja mensajes dentro de la sala.
+
+        Args:
+            client: Estado del cliente atendido.
+        """  # Doc.
 
         while client.alive:
             try:
@@ -99,7 +132,12 @@ class ChatServer:
             pass
 
     def _broadcast_room(self, sender: ClientState, message: str) -> None:
-        """Reenvia solo a clientes de la misma sala."""  # Doc.
+        """Reenvia solo a clientes de la misma sala.
+
+        Args:
+            sender: Cliente emisor.
+            message: Texto a enviar a la sala.
+        """  # Doc.
 
         with self.send_semaphore:  # Semaforo.
             for client in self.rooms.get(sender.room, []):  # Clientes de sala.
@@ -112,6 +150,8 @@ class ChatServer:
 
 
 def main() -> None:
+    """Punto de entrada del servidor con salas."""
+
     ChatServer().start()  # Ejecuta.
 
 

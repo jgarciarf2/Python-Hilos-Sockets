@@ -21,7 +21,14 @@ ACK = "[ACK]"  # Token de confirmacion.
 
 @dataclass
 class ClientState:
-    """Estado del cliente."""  # Doc.
+    """Estado del cliente.
+
+    Atributos:
+        name: Nombre del cliente.
+        conn: Socket TCP asociado.
+        addr: Tupla (ip, puerto).
+        alive: Bandera de actividad.
+    """  # Doc.
 
     name: str  # Nombre.
     conn: socket.socket  # Socket.
@@ -31,7 +38,15 @@ class ClientState:
 
 @dataclass
 class ChatServer:
-    """Servidor con confirmacion de recepcion."""  # Doc.
+    """Servidor con confirmacion de recepcion.
+
+    Atributos:
+        host: IP de escucha.
+        port: Puerto de escucha.
+        send_semaphore: Semaforo para serializar envios.
+        ready_barrier: Barrera de inicio.
+        clients: Lista de clientes.
+    """  # Doc.
 
     host: str = HOST  # IP.
     port: int = PORT  # Puerto.
@@ -40,7 +55,10 @@ class ChatServer:
     clients: list[ClientState] = field(default_factory=list)  # Clientes.
 
     def start(self) -> None:
-        """Inicia servidor."""  # Doc.
+        """Inicia servidor.
+
+        Acepta dos clientes, crea hilos y mantiene vivo el proceso.
+        """  # Doc.
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -71,7 +89,14 @@ class ChatServer:
         print("Servidor finalizado.")
 
     def _recv_name(self, conn: socket.socket) -> str:
-        """Pide nombre."""  # Doc.
+        """Pide nombre.
+
+        Args:
+            conn: Socket conectado.
+
+        Returns:
+            Nombre o cadena vacia si falla.
+        """  # Doc.
 
         try:
             conn.sendall("NOMBRE: ".encode(ENCODING))
@@ -81,7 +106,11 @@ class ChatServer:
             return ""
 
     def _handle_client(self, client: ClientState) -> None:
-        """Recibe mensajes y responde ACK al emisor."""  # Doc.
+        """Recibe mensajes y responde ACK al emisor.
+
+        Args:
+            client: Estado del cliente atendido.
+        """  # Doc.
 
         try:
             self.ready_barrier.wait()
@@ -110,7 +139,12 @@ class ChatServer:
             pass
 
     def _broadcast(self, sender: ClientState, message: str) -> None:
-        """Reenvia a los otros clientes."""  # Doc.
+        """Reenvia a los otros clientes.
+
+        Args:
+            sender: Cliente emisor.
+            message: Texto a reenviar.
+        """  # Doc.
 
         with self.send_semaphore:
             for client in self.clients:
@@ -119,7 +153,12 @@ class ChatServer:
                 self._send_to(client, message)
 
     def _send_to(self, client: ClientState, message: str) -> None:
-        """Envio seguro."""  # Doc.
+        """Envio seguro.
+
+        Args:
+            client: Destinatario.
+            message: Texto en claro.
+        """  # Doc.
 
         try:
             client.conn.sendall(message.encode(ENCODING))
@@ -128,6 +167,8 @@ class ChatServer:
 
 
 def main() -> None:
+    """Punto de entrada del servidor con ACK."""
+
     ChatServer().start()
 
 

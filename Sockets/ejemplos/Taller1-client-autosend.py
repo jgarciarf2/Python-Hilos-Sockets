@@ -18,7 +18,12 @@ BUFFER_SIZE = 2048  # Buffer.
 
 
 def run_client_auto(host: str, port: int) -> None:
-    """Cliente que envia mensajes de una lista con pausas."""  # Doc.
+    """Cliente que envia mensajes de una lista con pausas.
+
+    Args:
+        host: IP o hostname del servidor.
+        port: Puerto TCP del servidor.
+    """  # Doc.
 
     name = input("Tu nombre: ").strip()  # Nombre.
     print(f"Conectando como {name}...")  # Log.
@@ -55,7 +60,12 @@ def run_client_auto(host: str, port: int) -> None:
 
 
 def _client_receiver(sock: socket.socket, stop_event: threading.Event) -> None:
-    """Recibe mensajes del servidor."""  # Doc.
+    """Recibe mensajes del servidor.
+
+    Args:
+        sock: Socket conectado.
+        stop_event: Evento para detener el hilo receptor.
+    """  # Doc.
 
     while not stop_event.is_set():  # Loop.
         try:
@@ -69,6 +79,8 @@ def _client_receiver(sock: socket.socket, stop_event: threading.Event) -> None:
 
 
 def main() -> None:
+    """Punto de entrada del cliente automatico."""
+
     run_client_auto(HOST, PORT)  # Ejecuta.
 
 

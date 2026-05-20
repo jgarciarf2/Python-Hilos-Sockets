@@ -18,13 +18,26 @@ KEY = 37  # Clave XOR.
 
 
 def xor_bytes(data: bytes) -> bytes:
-    """Aplica XOR a cada byte."""  # Doc.
+    """Aplica XOR a cada byte.
+
+    Args:
+        data: Bytes de entrada.
+
+    Returns:
+        Bytes con XOR aplicado usando la clave KEY.
+    """  # Doc.
 
     return bytes(b ^ KEY for b in data)  # XOR.
 
 
 def run_client() -> None:
-    """Cliente que cifra antes de enviar y descifra al recibir."""  # Doc.
+    """Cliente que cifra antes de enviar y descifra al recibir.
+
+    Flujo:
+        - Solicita nombre.
+        - Envia y recibe datos usando XOR.
+        - Hilo receptor descifra y muestra mensajes.
+    """  # Doc.
 
     name = input("Tu nombre: ").strip()  # Nombre.
 
@@ -56,7 +69,12 @@ def run_client() -> None:
 
 
 def _receiver(sock: socket.socket, stop_event: threading.Event) -> None:
-    """Recibe y descifra mensajes."""  # Doc.
+    """Recibe y descifra mensajes.
+
+    Args:
+        sock: Socket conectado.
+        stop_event: Evento para detener el hilo.
+    """  # Doc.
 
     while not stop_event.is_set():
         try:
@@ -70,6 +88,8 @@ def _receiver(sock: socket.socket, stop_event: threading.Event) -> None:
 
 
 def main() -> None:
+    """Punto de entrada del cliente XOR."""
+
     run_client()
 
 

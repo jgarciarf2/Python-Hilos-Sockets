@@ -23,7 +23,14 @@ LOG_PATH = Path("chat_historial.txt")  # Archivo de historial.
 
 @dataclass
 class ClientState:
-    """Estado de un cliente conectado."""  # Doc.
+    """Estado de un cliente conectado.
+
+    Atributos:
+        name: Nombre del cliente.
+        conn: Socket TCP asociado.
+        addr: Tupla (ip, puerto) remota.
+        alive: Bandera de actividad.
+    """  # Doc.
 
     name: str  # Nombre.
     conn: socket.socket  # Socket.
@@ -33,7 +40,18 @@ class ClientState:
 
 @dataclass
 class ChatServer:
-    """Servidor con persistencia de historial."""  # Doc.
+    """Servidor con persistencia de historial.
+
+    Atributos:
+        host: IP de escucha.
+        port: Puerto de escucha.
+        history: Lista con historial en memoria.
+        history_lock: Lock para proteger el historial.
+        send_semaphore: Semaforo para serializar envios.
+        in_flight_limit: Semaforo acotado para limitar carga.
+        ready_barrier: Barrera para sincronizar 2 clientes.
+        clients: Lista de clientes conectados.
+    """  # Doc.
 
     host: str = HOST  # IP.
     port: int = PORT  # Puerto.
@@ -45,7 +63,13 @@ class ChatServer:
     clients: list[ClientState] = field(default_factory=list)  # Clientes.
 
     def start(self) -> None:
-        """Inicia el servidor."""  # Doc.
+        """Inicia el servidor.
+
+        Flujo:
+            - Crea socket, escucha conexiones y acepta 2 clientes.
+            - Lanza un hilo por cliente.
+            - Mantiene el proceso vivo hasta que todos salgan.
+        """  # Doc.
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:  # Socket TCP.
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Reusar.
@@ -76,7 +100,14 @@ class ChatServer:
         print("Servidor finalizado.")  # Log.
 
     def _recv_name(self, conn: socket.socket) -> str:
-        """Solicita el nombre al cliente."""  # Doc.
+        """Solicita el nombre al cliente.
+
+        Args:
+            conn: Socket conectado.
+
+        Returns:
+            Nombre del cliente o cadena vacia si falla.
+        """  # Doc.
 
         try:
             conn.sendall("NOMBRE: ".encode(ENCODING))  # Pide.
@@ -86,7 +117,11 @@ class ChatServer:
             return ""  # Falla.
 
     def _handle_client(self, client: ClientState) -> None:
-        """Hilo por cliente."""  # Doc.
+        """Hilo por cliente.
+
+        Args:
+            client: Estado del cliente atendido por el hilo.
+        """  # Doc.
 
         try:
             self.ready_barrier.wait()  # Barrera.
@@ -126,7 +161,11 @@ class ChatServer:
             pass
 
     def _register_message(self, message: str) -> None:
-        """Registra en memoria y archivo."""  # Doc.
+        """Registra en memoria y archivo.
+
+        Args:
+            message: Texto ya formateado que se guardara.
+        """  # Doc.
 
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Sello.
         line = f"[{timestamp}] {message}"  # Linea.
@@ -136,7 +175,12 @@ class ChatServer:
             LOG_PATH.write_text("\n".join(self.history) + "\n", encoding=ENCODING)  # Persistencia.
 
     def _broadcast(self, sender: ClientState, message: str) -> None:
-        """Reenvia mensaje al otro cliente."""  # Doc.
+        """Reenvia mensaje al otro cliente.
+
+        Args:
+            sender: Cliente que origina el mensaje.
+            message: Texto a reenviar.
+        """  # Doc.
 
         with self.send_semaphore:  # Semaforo.
             for client in self.clients:  # Itera.
@@ -145,7 +189,12 @@ class ChatServer:
                 self._send_to(client, message)  # Envia.
 
     def _send_to(self, client: ClientState, message: str) -> None:
-        """Envio seguro."""  # Doc.
+        """Envio seguro.
+
+        Args:
+            client: Destinatario.
+            message: Texto en claro.
+        """  # Doc.
 
         try:
             client.conn.sendall(message.encode(ENCODING))  # Envia.
@@ -154,6 +203,8 @@ class ChatServer:
 
 
 def main() -> None:
+    """Punto de entrada del script de servidor con log."""
+
     ChatServer().start()  # Inicia.
 
 

@@ -17,7 +17,13 @@ BUFFER_SIZE = 2048  # Buffer.
 
 
 def run_client() -> None:
-    """Envia mensaje y muestra ACK cuando llega."""  # Doc.
+    """Envia mensaje y muestra ACK cuando llega.
+
+    Flujo:
+        - Solicita nombre.
+        - Envia mensajes al servidor.
+        - El hilo receptor imprime mensajes y ACK.
+    """  # Doc.
 
     name = input("Tu nombre: ").strip()  # Nombre.
 
@@ -49,7 +55,12 @@ def run_client() -> None:
 
 
 def _receiver(sock: socket.socket, stop_event: threading.Event) -> None:
-    """Recibe mensajes y ACK."""  # Doc.
+    """Recibe mensajes y ACK.
+
+    Args:
+        sock: Socket conectado.
+        stop_event: Evento para detener el hilo.
+    """  # Doc.
 
     while not stop_event.is_set():
         try:
@@ -63,6 +74,8 @@ def _receiver(sock: socket.socket, stop_event: threading.Event) -> None:
 
 
 def main() -> None:
+    """Punto de entrada del cliente con ACK."""
+
     run_client()
 
 

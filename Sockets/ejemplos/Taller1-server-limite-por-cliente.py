@@ -21,7 +21,16 @@ MAX_MSG_PER_SECOND = 5  # Limite por cliente.
 
 @dataclass
 class ClientState:
-    """Estado del cliente con control de ritmo."""  # Doc.
+    """Estado del cliente con control de ritmo.
+
+    Atributos:
+        name: Nombre del cliente.
+        conn: Socket TCP asociado.
+        addr: Tupla (ip, puerto) remota.
+        alive: Bandera de actividad.
+        last_window: Inicio de la ventana de tiempo actual.
+        window_count: Numero de mensajes en la ventana.
+    """  # Doc.
 
     name: str  # Nombre.
     conn: socket.socket  # Socket.
@@ -33,7 +42,15 @@ class ClientState:
 
 @dataclass
 class ChatServer:
-    """Servidor con rate limit por cliente."""  # Doc.
+    """Servidor con rate limit por cliente.
+
+    Atributos:
+        host: IP de escucha.
+        port: Puerto de escucha.
+        send_semaphore: Semaforo para serializar envios.
+        ready_barrier: Barrera que sincroniza el inicio.
+        clients: Lista de clientes conectados.
+    """  # Doc.
 
     host: str = HOST  # IP.
     port: int = PORT  # Puerto.
@@ -42,7 +59,11 @@ class ChatServer:
     clients: list[ClientState] = field(default_factory=list)  # Clientes.
 
     def start(self) -> None:
-        """Inicia el servidor."""  # Doc.
+        """Inicia el servidor.
+
+        Acepta dos clientes, crea un hilo por cliente y mantiene el proceso vivo
+        hasta que los clientes se desconecten.
+        """  # Doc.
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:  # Socket.
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Reusar.
@@ -73,7 +94,14 @@ class ChatServer:
         print("Servidor finalizado.")  # Log.
 
     def _recv_name(self, conn: socket.socket) -> str:
-        """Solicita el nombre."""  # Doc.
+        """Solicita el nombre.
+
+        Args:
+            conn: Socket conectado.
+
+        Returns:
+            Nombre o cadena vacia si falla.
+        """  # Doc.
 
         try:
             conn.sendall("NOMBRE: ".encode(ENCODING))  # Pide.
@@ -83,7 +111,11 @@ class ChatServer:
             return ""  # Falla.
 
     def _handle_client(self, client: ClientState) -> None:
-        """Maneja el cliente con limite de mensajes."""  # Doc.
+        """Maneja el cliente con limite de mensajes.
+
+        Args:
+            client: Estado del cliente atendido.
+        """  # Doc.
 
         try:
             self.ready_barrier.wait()  # Barrera.
@@ -117,7 +149,14 @@ class ChatServer:
             pass
 
     def _allow_message(self, client: ClientState) -> bool:
-        """Valida rate limit con ventana de 1 segundo."""  # Doc.
+        """Valida rate limit con ventana de 1 segundo.
+
+        Args:
+            client: Estado del cliente a evaluar.
+
+        Returns:
+            True si el mensaje es permitido, False si excede el limite.
+        """  # Doc.
 
         now = time.time()  # Tiempo actual.
         if now - client.last_window >= 1.0:  # Nueva ventana.
@@ -127,7 +166,12 @@ class ChatServer:
         return client.window_count <= MAX_MSG_PER_SECOND  # Decide.
 
     def _broadcast(self, sender: ClientState, message: str) -> None:
-        """Reenvia con semaforo."""  # Doc.
+        """Reenvia con semaforo.
+
+        Args:
+            sender: Cliente emisor.
+            message: Texto a enviar.
+        """  # Doc.
 
         with self.send_semaphore:  # Semaforo.
             for client in self.clients:  # Itera.
@@ -136,7 +180,12 @@ class ChatServer:
                 self._send_to(client, message)  # Envia.
 
     def _send_to(self, client: ClientState, message: str) -> None:
-        """Envio seguro."""  # Doc.
+        """Envio seguro.
+
+        Args:
+            client: Destinatario.
+            message: Texto en claro.
+        """  # Doc.
 
         try:
             client.conn.sendall(message.encode(ENCODING))  # Envia.
@@ -145,6 +194,8 @@ class ChatServer:
 
 
 def main() -> None:
+    """Punto de entrada del servidor con rate limit."""
+
     ChatServer().start()  # Ejecuta.
 
 

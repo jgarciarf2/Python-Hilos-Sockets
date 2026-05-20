@@ -17,7 +17,13 @@ BUFFER_SIZE = 2048  # Buffer.
 
 
 def run_client() -> None:
-    """Conecta, envia nombre y sala, y chatea."""  # Doc.
+    """Conecta, envia nombre y sala, y chatea.
+
+    Flujo:
+        - Solicita nombre y sala.
+        - Envia ambos datos al servidor.
+        - Inicia hilo receptor para mensajes.
+    """  # Doc.
 
     name = input("Tu nombre: ").strip()  # Nombre.
     room = input("Sala: ").strip()  # Sala.
@@ -53,7 +59,12 @@ def run_client() -> None:
 
 
 def _receiver(sock: socket.socket, stop_event: threading.Event) -> None:
-    """Recibe mensajes."""  # Doc.
+    """Recibe mensajes.
+
+    Args:
+        sock: Socket conectado.
+        stop_event: Evento para detener el hilo.
+    """  # Doc.
 
     while not stop_event.is_set():
         try:
@@ -67,6 +78,8 @@ def _receiver(sock: socket.socket, stop_event: threading.Event) -> None:
 
 
 def main() -> None:
+    """Punto de entrada del cliente con salas."""
+
     run_client()  # Ejecuta.
 
 

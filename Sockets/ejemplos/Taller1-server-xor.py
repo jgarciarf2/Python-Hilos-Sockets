@@ -20,14 +20,28 @@ KEY = 37  # Clave XOR.
 
 
 def xor_bytes(data: bytes) -> bytes:
-    """Aplica XOR simple a cada byte."""  # Doc.
+    """Aplica XOR simple a cada byte.
+
+    Args:
+        data: Bytes de entrada.
+
+    Returns:
+        Bytes con XOR aplicado usando la clave KEY.
+    """  # Doc.
 
     return bytes(b ^ KEY for b in data)  # XOR.
 
 
 @dataclass
 class ClientState:
-    """Estado del cliente."""  # Doc.
+    """Estado del cliente.
+
+    Atributos:
+        name: Nombre del cliente.
+        conn: Socket TCP asociado.
+        addr: Tupla (ip, puerto).
+        alive: Bandera de actividad.
+    """  # Doc.
 
     name: str  # Nombre.
     conn: socket.socket  # Socket.
@@ -37,7 +51,15 @@ class ClientState:
 
 @dataclass
 class ChatServer:
-    """Servidor que cifra y descifra mensajes."""  # Doc.
+    """Servidor que cifra y descifra mensajes.
+
+    Atributos:
+        host: IP de escucha.
+        port: Puerto de escucha.
+        send_semaphore: Semaforo para serializar envios.
+        ready_barrier: Barrera para sincronizar inicio.
+        clients: Lista de clientes.
+    """  # Doc.
 
     host: str = HOST  # IP.
     port: int = PORT  # Puerto.
@@ -46,7 +68,10 @@ class ChatServer:
     clients: list[ClientState] = field(default_factory=list)  # Clientes.
 
     def start(self) -> None:
-        """Inicia servidor."""  # Doc.
+        """Inicia servidor.
+
+        Acepta dos clientes, lanza hilos y mantiene vivo el proceso.
+        """  # Doc.
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -77,7 +102,14 @@ class ChatServer:
         print("Servidor finalizado.")
 
     def _recv_name(self, conn: socket.socket) -> str:
-        """Solicita nombre."""  # Doc.
+        """Solicita nombre.
+
+        Args:
+            conn: Socket conectado.
+
+        Returns:
+            Nombre o cadena vacia.
+        """  # Doc.
 
         try:
             conn.sendall("NOMBRE: ".encode(ENCODING))
@@ -87,7 +119,11 @@ class ChatServer:
             return ""
 
     def _handle_client(self, client: ClientState) -> None:
-        """Recibe cifrado, descifra y reenvia."""  # Doc.
+        """Recibe cifrado, descifra y reenvia.
+
+        Args:
+            client: Estado del cliente atendido.
+        """  # Doc.
 
         try:
             self.ready_barrier.wait()
@@ -115,7 +151,12 @@ class ChatServer:
             pass
 
     def _broadcast(self, sender: ClientState, message: str) -> None:
-        """Envia cifrado a otros clientes."""  # Doc.
+        """Envia cifrado a otros clientes.
+
+        Args:
+            sender: Cliente emisor.
+            message: Texto en claro a cifrar y reenviar.
+        """  # Doc.
 
         encrypted = xor_bytes(message.encode(ENCODING))  # Cifra.
         with self.send_semaphore:
@@ -128,7 +169,12 @@ class ChatServer:
                     client.alive = False
 
     def _send_to(self, client: ClientState, message: str) -> None:
-        """Envio cifrado."""  # Doc.
+        """Envio cifrado.
+
+        Args:
+            client: Destinatario.
+            message: Texto en claro.
+        """  # Doc.
 
         try:
             client.conn.sendall(xor_bytes(message.encode(ENCODING)))
@@ -137,6 +183,8 @@ class ChatServer:
 
 
 def main() -> None:
+    """Punto de entrada del servidor XOR."""
+
     ChatServer().start()
 
 
