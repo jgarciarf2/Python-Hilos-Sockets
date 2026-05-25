@@ -12,7 +12,7 @@ PROPÓSITO GENERAL DEL ARCHIVO:
     1. Se conecta al servidor vía socket TCP.
     2. Recibe la lista de productos disponibles.
     3. Genera un número ALEATORIO de pedidos (entre 1 y 5).
-    4. Cada pedido tiene un producto aleatorio y una cantidad aleatoria.
+    4. Cada pedido tiecccne un producto aleatorio y una cantidad aleatoria.
     5. Envía los pedidos al servidor y recibe confirmaciones.
     6. Envía una señal de FIN y se desconecta.
 

@@ -179,7 +179,7 @@ PEDIDOS_MINIMOS_PARA_BARRERA = 5
 # - Número máximo de clientes que el servidor aceptará antes de cerrar
 #   la conexión entrante.
 # - Cada cliente se conecta, envía sus pedidos, y se desconecta.
-MAX_CLIENTES = 5
+MAX_CLIENTES = 2
 
 # ==============================================================================
 # STOCK DE PRODUCTOS (INVENTARIO)
