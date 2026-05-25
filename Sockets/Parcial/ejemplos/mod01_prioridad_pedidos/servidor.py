@@ -83,9 +83,8 @@ import sys          # Para acceder a parámetros del sistema (salida de error, e
 # Incluir el nombre del hilo es CRÍTICO en sistemas concurrentes: permite
 # rastrear qué hilo generó cada línea de log y detectar condiciones de carrera.
 logging.basicConfig(
-    level=logging.DEBUG,           # Capturar TODOS los niveles (DEBUG, INFO, WARNING, ERROR)
-    format="%(asctime)s [%(levelname)-8s] [%(threadName)-20s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+    level=logging.INFO,            # INFO por defecto: menos ruido, pero suficiente para entender el flujo
+    format="%(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout)   # Salida por consola (stdout)
     ]
@@ -380,7 +379,7 @@ def procesador_pedidos(id_procesador: int) -> None:
                 # En el original, pop(0) también extraía el primero, pero era FIFO puro.
                 # Aquí es PRIORITY QUEUE: la ordenación se hizo al insertar.
                 pedido = cola_pedidos.pop(0)
-                logger.debug(f"[COLA] Estado: {cola_pedidos}")
+                logger.info(f"[COLA] Estado: {cola_pedidos}")
             else:
                 pedido = None
 
@@ -529,7 +528,7 @@ def manejar_cliente(conn: socket.socket, addr: tuple, id_cliente: int) -> None:
         addr  (tuple):         Dirección del cliente (ip, puerto).
         id_cliente (int):      Identificador secuencial del cliente.
     """
-    logger.info(f"[CLIENTE-{id_cliente}] Conexión aceptada desde {addr[0]}:{addr[1]}")
+    logger.debug(f"[CLIENTE-{id_cliente}] Conexión aceptada desde {addr[0]}:{addr[1]}")
 
     try:
         # ── PASO 1: RECIBIR DATOS DEL CLIENTE ─────────────────────────────────
@@ -640,7 +639,7 @@ def manejar_cliente(conn: socket.socket, addr: tuple, id_cliente: int) -> None:
 
         # ── PASO 6: ENCOLAR EL PEDIDO CON PRIORIDAD ───────────────────────────
         # MODIFICACIÓN CENTRAL: En lugar de cola_pedidos.append(pedido),
-        logger.debug(f"[COLA] Estado: {cola_pedidos}")
+        logger.info(f"[COLA] Estado: {cola_pedidos}")
         # usamos insertar_pedido_ordenado() que mantiene el invariante de orden.
         pedido = {
             "tipo":       "pedido",
@@ -654,7 +653,7 @@ def manejar_cliente(conn: socket.socket, addr: tuple, id_cliente: int) -> None:
             # insertar_pedido_ordenado() hace cola_pedidos.insert(pos, pedido)
             # donde pos mantiene el orden ascendente por 'prioridad'.
             # ANTES (original):    cola_pedidos.append(pedido)  → al final siempre
-            logger.debug(f"[COLA] Estado: {cola_pedidos}")
+            logger.info(f"[COLA] Estado: {cola_pedidos}")
             # AHORA (mod 1):       insertar_pedido_ordenado(pedido)  → posición correcta
             insertar_pedido_ordenado(pedido)
 
