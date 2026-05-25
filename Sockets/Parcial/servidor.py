@@ -438,6 +438,7 @@ def agregar_pedido_a_cola(pedido):
         # --- PASO 3: Agregar el pedido a la cola ---
         # append() agrega el elemento al FINAL de la lista (comportamiento FIFO).
         cola_pedidos.append(pedido)
+        log(f"[COLA] Estado: {cola_pedidos}")
 
         # --- PASO 4: Incrementar el contador ---
         contador_pedidos_totales += 1
@@ -500,6 +501,7 @@ def retirar_pedido_de_cola():
             # Esto implementa el comportamiento FIFO (First In, First Out).
             # El primer pedido que entró es el primero que se atiende.
             pedido = cola_pedidos.pop(0)
+            log(f"[COLA] Estado: {cola_pedidos}")
 
             log(f"- Pedido retirado de la cola: {pedido['cantidad']}x "
                 f"{pedido['producto']} (de {pedido['cliente']}). "

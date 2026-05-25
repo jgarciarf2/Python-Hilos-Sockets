@@ -65,6 +65,7 @@ def agregar_pedido_a_cola(pedido):
 
     with lock_cola:
         cola_pedidos.append(pedido)
+        log(f"[COLA] Estado: {cola_pedidos}")
         contador_pedidos_totales += 1
         total_actual = contador_pedidos_totales
         
@@ -86,6 +87,7 @@ def retirar_pedido_de_cola():
     with lock_cola:
         if len(cola_pedidos) > 0:
             pedido = cola_pedidos.pop(0)
+            log(f"[COLA] Estado: {cola_pedidos}")
             semaforo_capacidad.release()
             return pedido
         return None

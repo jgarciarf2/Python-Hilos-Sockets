@@ -544,6 +544,7 @@ def hilo_procesador(id_procesador: int) -> None:
         with lock_cola:
             if cola_pedidos:
                 pedido_local = cola_pedidos.pop(0)
+                log(f"[COLA] Estado: {cola_pedidos}")
                 contador_pedidos += 1
 
         if pedido_local is not None:

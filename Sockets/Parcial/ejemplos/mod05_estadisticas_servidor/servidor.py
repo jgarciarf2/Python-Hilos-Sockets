@@ -604,6 +604,7 @@ def agregar_pedido_a_cola(pedido):
     with lock_cola:
         # append() agrega el elemento al FINAL de la lista (comportamiento FIFO).
         cola_pedidos.append(pedido)
+        log(f"[COLA] Estado: {cola_pedidos}")
 
         # Incrementar el contador para el umbral de la barrera.
         contador_pedidos_totales += 1
@@ -666,6 +667,7 @@ def retirar_pedido_de_cola():
         if len(cola_pedidos) > 0:
             # pop(0) retira y retorna el PRIMER elemento (FIFO).
             pedido = cola_pedidos.pop(0)
+            log(f"[COLA] Estado: {cola_pedidos}")
 
             log(f"- Pedido retirado de la cola: {pedido['cantidad']}x "
                 f"{pedido['producto']} (de {pedido['cliente']}). "

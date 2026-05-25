@@ -73,6 +73,7 @@ def agregar_pedido_a_cola(pedido):
     with lock_cola:
         # En esta mod, simplemente encolamos al final, el scheduler decide el orden al retirar
         cola_pedidos.append(pedido)
+        log(f"[COLA] Estado: {cola_pedidos}")
         contador_pedidos_totales += 1
         total_actual = contador_pedidos_totales
         log(f"+ Pedido agregado (Pri {pedido['prioridad']}): {pedido['cantidad']}x {pedido['producto']}. Cola: {len(cola_pedidos)}")
@@ -108,17 +109,20 @@ def retirar_pedido_de_cola():
             # Obligado a atender media/baja para evitar inanición
             idx_seleccionado = medias_bajas[0]
             pedido_seleccionado = cola_pedidos.pop(idx_seleccionado)
+            log(f"[COLA] Estado: {cola_pedidos}")
             consecutivos_alta = 0
             log(f"🔄 [STARVATION CONTROL] Atendiendo pedido de prioridad {pedido_seleccionado['prioridad']} tras 5 consecutivos de alta.")
         elif len(altas) > 0:
             # Atender alta
             idx_seleccionado = altas[0]
             pedido_seleccionado = cola_pedidos.pop(idx_seleccionado)
+            log(f"[COLA] Estado: {cola_pedidos}")
             consecutivos_alta += 1
         elif len(medias_bajas) > 0:
             # Atender media o baja
             idx_seleccionado = medias_bajas[0]
             pedido_seleccionado = cola_pedidos.pop(idx_seleccionado)
+            log(f"[COLA] Estado: {cola_pedidos}")
             consecutivos_alta = 0
 
         if pedido_seleccionado:

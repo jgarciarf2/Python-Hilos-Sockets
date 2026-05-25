@@ -263,6 +263,7 @@ def hilo_procesador(id_procesador, cola_pedidos, lock_stock, barrera, evento_apa
             # Intenta obtener un pedido; si no hay en 1 s, vuelve a comprobar
             # el evento de apagado. El timeout impide bloqueo indefinido.
             datos_pedido, conn = cola_pedidos.get(timeout=1)
+            log(f"[COLA] Estado: {list(cola_pedidos.queue)}")
         except queue.Empty:
             # Cola vacía: verificar si debemos parar
             continue
@@ -385,6 +386,7 @@ def manejar_cliente(conn, addr, cola_pedidos, semaforo_clientes, evento_apagado)
             # Usar put_nowait en lugar de put() evita bloquear al hilo manejador
             # (y por ende al cliente) indefinidamente.
             cola_pedidos.put_nowait((datos_pedido, conn))
+            log(f"[COLA] Estado: {list(cola_pedidos.queue)}")
             print(
                 f"[Servidor] Pedido de {addr} encolado. "
                 f"Cola: {cola_pedidos.qsize()}/{CAPACIDAD_MAXIMA_COLA}"

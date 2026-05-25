@@ -373,6 +373,7 @@ def procesador_pedidos(id_procesador: int) -> None:
                 # Extraemos el primer pedido de la cola (FIFO).
                 # pop(0) es O(n) en listas Python; para producción usar collections.deque.
                 pedido = cola_pedidos.pop(0)
+                log(f"[COLA] Estado: {cola_pedidos}")
 
         if pedido is None:
             # No hay trabajo: dormimos brevemente y volvemos a verificar.
@@ -544,6 +545,7 @@ def manejar_cliente(conn: socket.socket, addr: tuple) -> None:
                 # pueda enviar la respuesta directamente al cliente correcto.
                 with lock_stock:
                     cola_pedidos.append({
+                    log(f"[COLA] Estado: {cola_pedidos}")
                         "accion"  : accion,
                         "producto": producto,
                         "cantidad": cantidad,

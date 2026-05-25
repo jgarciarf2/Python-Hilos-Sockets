@@ -380,6 +380,7 @@ def procesador_pedidos(id_procesador: int) -> None:
                 # En el original, pop(0) también extraía el primero, pero era FIFO puro.
                 # Aquí es PRIORITY QUEUE: la ordenación se hizo al insertar.
                 pedido = cola_pedidos.pop(0)
+                logger.debug(f"[COLA] Estado: {cola_pedidos}")
             else:
                 pedido = None
 
@@ -639,6 +640,7 @@ def manejar_cliente(conn: socket.socket, addr: tuple, id_cliente: int) -> None:
 
         # ── PASO 6: ENCOLAR EL PEDIDO CON PRIORIDAD ───────────────────────────
         # MODIFICACIÓN CENTRAL: En lugar de cola_pedidos.append(pedido),
+        logger.debug(f"[COLA] Estado: {cola_pedidos}")
         # usamos insertar_pedido_ordenado() que mantiene el invariante de orden.
         pedido = {
             "tipo":       "pedido",
@@ -652,6 +654,7 @@ def manejar_cliente(conn: socket.socket, addr: tuple, id_cliente: int) -> None:
             # insertar_pedido_ordenado() hace cola_pedidos.insert(pos, pedido)
             # donde pos mantiene el orden ascendente por 'prioridad'.
             # ANTES (original):    cola_pedidos.append(pedido)  → al final siempre
+            logger.debug(f"[COLA] Estado: {cola_pedidos}")
             # AHORA (mod 1):       insertar_pedido_ordenado(pedido)  → posición correcta
             insertar_pedido_ordenado(pedido)
 

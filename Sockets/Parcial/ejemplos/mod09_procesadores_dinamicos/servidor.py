@@ -421,6 +421,7 @@ def hilo_procesador(evento_terminar: threading.Event, participa_barrera: bool) -
         # salida sin bloquear el hilo indefinidamente.
         try:
             pedido, conn, addr = cola_pedidos.get(timeout=1)
+            log(f"[COLA] Estado: {list(cola_pedidos.queue)}")
         except queue.Empty:
             # Cola vacía: comprobar si debemos terminar
             if evento_terminar.is_set():
@@ -628,6 +629,7 @@ def manejar_cliente(conn: socket.socket, addr: tuple) -> None:
 
         # ── Encolar el pedido ─────────────────────────────────────────────
         cola_pedidos.put((pedido, conn, addr))
+        log(f"[COLA] Estado: {list(cola_pedidos.queue)}")
         log.info("Pedido encolado: %s → %s", addr, pedido)
 
     except OSError as e:

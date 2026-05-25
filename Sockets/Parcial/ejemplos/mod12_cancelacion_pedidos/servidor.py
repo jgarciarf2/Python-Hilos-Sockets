@@ -65,6 +65,7 @@ def agregar_pedido_a_cola(pedido):
 
     with lock_cola:
         cola_pedidos.append(pedido)
+        log(f"[COLA] Estado: {cola_pedidos}")
         contador_pedidos_totales += 1
         total_actual = contador_pedidos_totales
         log(f"+ Pedido {pedido['pedido_id']} agregado. Cola: {len(cola_pedidos)}")
@@ -82,6 +83,7 @@ def retirar_pedido_de_cola():
     with lock_cola:
         if len(cola_pedidos) > 0:
             pedido = cola_pedidos.pop(0)
+            log(f"[COLA] Estado: {cola_pedidos}")
             semaforo_capacidad.release()
             return pedido
         return None
@@ -94,6 +96,7 @@ def cancelar_pedido_de_cola(pedido_id):
         for idx, pedido in enumerate(cola_pedidos):
             if pedido["pedido_id"] == pedido_id:
                 cola_pedidos.pop(idx)
+                log(f"[COLA] Estado: {cola_pedidos}")
                 # Al eliminar de la cola, debemos devolver un cupo al semáforo
                 semaforo_capacidad.release()
                 log(f"✖ Pedido {pedido_id} CANCELADO por el cliente antes de procesarse.")

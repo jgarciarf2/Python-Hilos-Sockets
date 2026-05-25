@@ -308,6 +308,7 @@ def procesar_pedidos(id_procesador: int) -> None:
             # Si la cola está vacía después del timeout, se vuelve al inicio
             # del while para re-evaluar la condición de apagado.
             pedido = cola_pedidos.get(timeout=1)
+            log(f"[COLA] Estado: {list(cola_pedidos.queue)}")
         except queue.Empty:
             # Cola vacía: ningún pedido disponible en este momento.
             # Continuar el bucle para verificar si hay que apagarse.
@@ -562,6 +563,7 @@ def manejar_cliente(conn: socket.socket, addr: tuple) -> None:
         # PASO 10: Encolar el pedido y confirmar al cliente
         # =====================================================================
         cola_pedidos.put(pedido)
+        log(f"[COLA] Estado: {list(cola_pedidos.queue)}")
 
         print(f"[SERVIDOR] Pedido de '{cliente}' para {cantidad}x '{producto}' "
               f"encolado correctamente. Pedidos en cola: ~{cola_pedidos.qsize()}")
